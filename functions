@@ -1,0 +1,609 @@
+<?php
+
+/*
+*
+* liceo setup
+*
+*/
+
+function liceo_setup() {
+	// Cargar las imágenes 
+	add_theme_support( 'post-thumbnails' );
+}
+add_action('after_setup_theme', 'liceo_setup');
+
+/* 
+*
+* Registrar estilos y scripts
+*
+*/
+
+function liceoucatolica_estilo() {
+	// Cargar el grid
+	wp_enqueue_style( 'sistema-grid', get_template_directory_uri() . '/css/grid.css', null );
+
+    // Cargar los estilos básicos
+    wp_enqueue_style( 'liceoucatolica-style', get_stylesheet_uri(), null, null);
+
+	// Cargar los estilos
+	wp_enqueue_style( 'estilos-personalizados', get_template_directory_uri() . '/css/style-theme.css', null);
+
+    // Cargar Fonts
+    wp_enqueue_style( 'fuentes', 'https://fonts.googleapis.com/css?family=Bree+Serif|Lato:100,100i,300,300i,400,400i,700,700i,900,900i&amp;subset=latin-ext', null);
+
+    // API google maps
+    wp_enqueue_script('maps', 'https://maps.googleapis.com/maps/api/js?key=AIzaSyAJq5xO31rYRAqv5h6yUZTOaHwDX2zjNlo&callback=initMap', array(), false);
+
+    // Cargar scripts
+    wp_enqueue_script('main', get_template_directory_uri() . '/js/main.js',null,false);
+
+}
+add_action( 'wp_enqueue_scripts','liceoucatolica_estilo');
+
+
+/*
+*
+* Cambiar los tags del script 
+*
+*/
+
+function make_script_async( $tag, $handle, $src ){
+    if ( 'maps' != $handle ) {
+        return $tag;
+    }
+    return str_replace( '<script', '<script async defer', $tag );
+}
+add_filter( 'script_loader_tag', 'make_script_async', 10, 3 );
+
+
+/*
+*
+* Registrar los menús
+*
+*/
+
+function registrar_menus(){
+    // Registro de los menús
+	register_nav_menus(			
+	array(
+		'Menu-principal'  => __( 'Menú principal' ),
+        'Menu-footer'     => __( 'Menú footer' ),           
+	));
+}
+add_action( 'init', 'registrar_menus' );
+
+
+/*
+*
+* Meta boxes 
+*
+*
+*/
+
+// registrar los custom fields y sanear los datos
+function luc_registro_meta_fields(){
+		register_meta('post', 'luc_name', [
+				'description'		=> _x('Enter your name', 'meta description', 'luc-textdomain' ),
+				'single'			=> true,
+				'sanitize_callback'	=> 'sanitize_text_field',
+				'auth_callback'		=> 'luc_custom_fields_auth_callback'
+			]
+		);
+
+		register_meta('post', 'luc_description', [
+				'description'		=> _x('Enter your description', 'meta description', 'luc-textdomain'),
+				'single'			=> true,
+				'sanitize_callback' => 'sanitize_text_field',
+				'auth_callback'		=> 'luc_custom_fields_auth_callback'
+			]
+		);
+
+		register_meta('post', 'luc_action', [
+				'description'		=> _x('Enter your cta', 'meta description', 'luc-textdomain'),
+				'single'			=> true,
+				'sanitize_callback' => 'sanitize_text_field',
+				'auth_callback'		=> 'luc_custom_fields_auth_callback'
+			]
+		);
+
+		register_meta('post', 'luc_link', [
+				'description'		=> _x('Enter your link', 'meta description', 'luc-textdomain'),
+				'single'			=> true,
+				'sanitize_callback' => 'sanitize_text_filed',
+				'auth_callback'		=> 'luc_custom_fields_auth_callback'
+			]
+		);
+
+		register_meta('post', 'luc_description_page', [
+			'description'			=> _x('Enter your description of page', 'meta description', 'luc-textdomain'),
+			'single'				=> true,
+			'sanitize_callback'		=> 'sanitize_text_field',
+			'auth_callback'			=> 'luc_custom_fields_auth_callback'
+			]
+		);	
+}
+
+// Comprobar si el usuario puede editar los meta fields
+function luc_custom_fields_auth_callback( $allowed, $meta_key, $post_id, $user_id, $cap, $caps ) {
+	if( 'post' == get_post_type( $post_id ) && current_user_can( 'edit_post', $post_id ) ){
+		$allowed = true;
+	}else{
+		$allowed = false;
+	}
+	return $allowed;
+}
+
+// Definir los meta boxes
+function luc_meta_boxes(){
+	add_meta_box('luc-meta-box', __('Atributos del CTA', 'luc-textdomain'), 'luc_meta_box_callback', 'page', 'side', 'low', array('arg' => 'value') );
+}
+add_action( 'add_meta_boxes', 'luc_meta_boxes' );
+
+
+function luc_meta_box_callback( $post, $args = array() ){
+	// El nonce es opcional pero recomendable. Vea http://codex.wordpress.org/Function_Reference/wp_nonce_field
+    wp_nonce_field( 'luc_meta_box', 'luc_meta_box_noncename' );
+    // Obtenermos los meta data actuales para rellenar los custom fields
+    // en caso de que ya tenga valores
+    $post_meta = get_post_custom( $post->ID );
+    // El input text
+    ?>
+    <p>
+         <label class="label" for="luc_name"><?php _e( 'Introduce el título del cta', 'luc_textdomain' ); ?></label>
+         <input  name="luc_name" id="luc_name" type="text" value="<?php echo esc_attr( get_post_meta( $post->ID, 'luc_name', true ) ); ?>">
+    </p>
+
+    <p>
+         <label class="label" for="luc_description"><?php _e( 'Introduce la descripcion del cta', 'luc_textdomain' ); ?></label>
+         <textarea name="luc_description" id="luc_description"><?php echo esc_attr( get_post_meta( $post->ID, 'luc_description', true ) ); ?></textarea>
+     </p>
+
+    <p>
+         <label class="label" for="luc_action"><?php _e( 'Introduce el texto del cta', 'luc_textdomain' ); ?></label>
+         <input  name="luc_action" id="luc_action" type="text" value="<?php echo esc_attr( get_post_meta( $post->ID, 'luc_action', true ) ); ?>">
+     </p>
+
+    <p>
+         <label class="label" for="luc_link"><?php _e( 'Introduce el enlace del cta', 'luc_textdomain' ); ?></label>
+         <input  name="luc_link" id="luc_link" type="text" value="<?php echo esc_attr( get_post_meta( $post->ID, 'luc_link', true ) ); ?>">
+     </p>
+
+<?php
+
+}
+
+// Comprobar y guardar los datos
+function luc_save_custom_fields( $post_id, $post ){
+
+	// comprobar en nonce como medida de seguridad
+	if ( ! isset( $_POST['luc_meta_box_noncename'] ) || ! wp_verify_nonce( $_POST['luc_meta_box_noncename'], 'luc_meta_box' ) ) {
+        return;
+    }
+
+    // Segundo, si hemos recibido valor de un custom field, los actualizamos
+    // El saneado/validación se hace automáticamente en el callback definido en el paso 2
+    if( isset( $_POST['luc_name'] ) && $_POST['luc_name'] != "" ) {
+        update_post_meta( $post_id, 'luc_name', $_POST['luc_name'] );
+    } else {
+        // Opcional
+        // $_POST['luc_name'] no tiene valor establecido,
+        // eliminar el meta field de la base de datos si existe previamente
+        delete_post_meta( $post_id, 'luc_name' );
+    }
+
+    if( isset( $_POST['luc_description'] ) && $_POST['luc_description'] != "" ) {
+        update_post_meta( $post_id, 'luc_description', $_POST['luc_description'] );
+    } else {
+        // Opcional
+        // $_POST['luc_name'] no tiene valor establecido,
+        // eliminar el meta field de la base de datos si existe previamente
+        delete_post_meta( $post_id, 'luc_description' );
+    }
+
+    if( isset( $_POST['luc_action'] ) && $_POST['luc_action'] != "" ) {
+        update_post_meta( $post_id, 'luc_action', $_POST['luc_action'] );
+    } else {
+        // Opcional
+        // $_POST['luc_name'] no tiene valor establecido,
+        // eliminar el meta field de la base de datos si existe previamente
+        delete_post_meta( $post_id, 'luc_action' );
+    }
+
+    if( isset( $_POST['luc_link'] ) && $_POST['luc_link'] != "" ) {
+        update_post_meta( $post_id, 'luc_link', $_POST['luc_link'] );
+    } else {
+        // Opcional
+        // $_POST['luc_name'] no tiene valor establecido,
+        // eliminar el meta field de la base de datos si existe previamente
+        delete_post_meta( $post_id, 'luc_link' );
+    }
+
+}
+add_action( 'save_post', 'luc_save_custom_fields', 10, 2 );
+
+
+// mostrar los datos en el front-end
+function luc_add_cutom_fields_to_content( $content ) {
+    
+    $custom_fields = get_post_custom();
+ 
+    $content .= "<div class='cta-div'>";
+ 
+    if( isset( $custom_fields['luc_name'] ) ) {
+         $content .= '<h3> '. $custom_fields['luc_name'][0] . '</h3>';
+    }
+    if( isset( $custom_fields['luc_description'] ) ) {
+         $content .= '<p> ' . $custom_fields['luc_description'][0] . '</p>';
+    }
+    if( isset( $custom_fields['luc_action'] ) ) {
+         $content .= '<a href=" ' . $custom_fields['luc_link'][0] . ' ">' . $custom_fields['luc_action'][0] . '</a>';
+    }
+    $content .= '</div>';
+ 
+    return $content;
+} 
+
+add_filter( 'the_content', function($d){ return is_page() ? luc_add_cutom_fields_to_content($d) : $d; });
+// add_filter( 'the_content', 'luc_add_cutom_fields_to_content' );
+
+
+/*
+*
+*
+*  Meta para la descripción
+*
+*/
+
+function luc_meta_description(){
+	add_meta_box('luc-meta-desc', __('Descripción de la pagina', 'luc-textdomain'), 'luc_meta_description_callback', 'page', 'side', 'low', array('arg' => 'value') );
+}
+add_action( 'add_meta_boxes', 'luc_meta_description' );
+
+function luc_meta_description_callback( $post, $args = array() ){
+	// El nonce es opcional pero recomendable. Vea http://codex.wordpress.org/Function_Reference/wp_nonce_field
+    wp_nonce_field( 'luc_meta_description_box', 'luc_meta_description_noncename' );
+    
+    // Obtenermos los meta data actuales para rellenar los custom fields
+    // en caso de que ya tenga valores
+    $post_meta = get_post_custom( $post->ID );
+
+    // El input text
+    ?>
+
+    <p>
+         <label class="label" for="_page"><?php _e( 'Introduce la descripción de la pagina', 'luc_textdomain' ); ?></label>
+         <textarea name="luc_description_page" id="luc_description_page" cols="32" rows="12"><?php echo esc_attr( get_post_meta( $post->ID, 'luc_description_page', true ) ); ?></textarea>
+     </p>
+
+<?php
+
+}
+
+// Comprobar y guardar los datos
+function luc_save_custom_fields_desc( $post_id, $post ){
+
+	// comprobar en nonce como medida de seguridad
+	if ( ! isset( $_POST['luc_meta_description_noncename'] ) || ! wp_verify_nonce( $_POST['luc_meta_description_noncename'], 'luc_meta_description_box' ) ) {
+        return;
+    }
+
+    // Segundo, si hemos recibido valor de un custom field, los actualizamos
+    // El saneado/validación se hace automáticamente en el callback definido en el paso 2
+    if( isset( $_POST['luc_description_page'] ) && $_POST['luc_description_page'] != "" ) {
+        update_post_meta( $post_id, 'luc_description_page', $_POST['luc_description_page'] );
+    } else {
+        // Opcional
+        // $_POST['luc_name'] no tiene valor establecido,
+        // eliminar el meta field de la base de datos si existe previamente
+        delete_post_meta( $post_id, 'luc_description_page' );
+    }
+
+}
+add_action( 'save_post', 'luc_save_custom_fields_desc', 10, 2 );
+
+/*
+*
+*
+* Extracto post inicio
+*
+*
+*/
+
+function extracto_more($more){
+	global $post;
+	return ' ...<br><a class="extracto-more" href="'.get_permalink($post->ID) .'"><span> Continuar </span></a>';
+}
+add_filter('excerpt_more', 'extracto_more');
+
+/*
+*
+*
+* Post types para paneles de inicio
+*
+*
+*/
+
+// la función no será utilizada antes del init
+add_action( 'init', 'entrada_personalizada');
+ 
+function entrada_personalizada() {
+	$labels = array(
+		'name' 				=> _x( 'Paneles', 'post type general name' ),
+		'singular_name'		=> _x( 'Panel', 'post type singular name' ),
+		'add_new'			=> _x( 'Añadir nuevo', 'panel' ),
+		'add_new_item'		=> __( 'Añadir nuevo panel' ),
+		'edit_item'			=> __( 'Editar panel' ),
+		'new_item'			=> __( 'Nuevo panel' ),
+		'view_item'			=> __( 'Ver panel' ),
+		'search_item'		=> __( 'Buscar paneles' ),
+		'not_found'			=> __( 'No se han encontrado paneles' ),
+		'not_found_in_trash'=> __( 'No se ha encontrado paneles en la papelera' ),
+		'parent_item_colon' => ''					
+	);
+
+// Creamos un array para los $args
+	$args = array( 
+		'labels' 				=> $labels,
+		'public' 				=> true,
+		'publicly_queryable'	=> true,
+		'show_ui'				=> true,
+		'query_var'				=> true,
+		'rewrite'				=> true,
+		'capability_type'		=> 'post',
+		'hierarchical'			=> false,
+		'menu_position'			=> null,
+		'supports'				=> array( 'title', 'editor', 'author', 'thumbnail', 'excerpt', 'comments' )
+	);	
+
+// registramos los post types
+	register_post_type( 'Paneles', $args );
+}
+
+
+// Lo enganchamos en la acción init y llamamos a la función create_book_taxonomies() cuando arranque
+add_action( 'init', 'create_book_taxonomies', 0 );
+ 
+// Creamos dos taxonomías, género y autor para el custom post type "libro"
+function create_book_taxonomies() {
+        // Añadimos nueva taxonomía y la hacemos jerárquica (como las categorías por defecto)
+        $labels = array(
+        'name' => _x( 'Categorías', 'taxonomy general name' ),
+        'singular_name' => _x( 'Categoría', 'taxonomy singular name' ),
+        'search_items' =>  __( 'Buscar por Categoría' ),
+        'all_items' => __( 'Todos las Categorías' ),
+        'parent_item' => __( 'Categoría padre' ),
+        'parent_item_colon' => __( 'Categoría padre:' ),
+        'edit_item' => __( 'Editar Categoría' ),
+        'update_item' => __( 'Actualizar Categoría' ),
+        'add_new_item' => __( 'Añadir nueva categoría' ),
+        'new_item_name' => __( 'Nombre del nuevo Categoría' ),
+);
+register_taxonomy( 'categoría', array( 'paneles' ), array(
+        'hierarchical' => true,
+        'labels' => $labels, /* Aquí es donde se utiliza la variable $labels que hemos creado arriba*/
+        'show_ui' => true,
+        'query_var' => true,
+        'rewrite' => array( 'slug' => 'categorias' ),
+));
+// Añado otra taxonomía, esta vez no es jerárquica, como las etiquetas.
+		$labels = array(
+		        'name' => _x( 'Etiquetas', 'taxonomy general name' ),
+		        'singular_name' => _x( 'Etiqueta', 'taxonomy singular name' ),
+		        'search_items' =>  __( 'Buscar Etiquetas' ),
+		        'popular_items' => __( 'Etiquetas populares' ),
+		        'all_items' => __( 'Todas las etiquetas' ),
+		        'parent_item' => null,
+		        'parent_item_colon' => null,
+		        'edit_item' => __( 'Editar Etiqueta' ),
+		        'update_item' => __( 'Actualizar Etiqueta' ),
+		        'add_new_item' => __( 'Añadir nueva Etiqueta' ),
+		        'new_item_name' => __( 'Nombre de la nueva Etiqueta' ),
+		        'separate_items_with_commas' => __( 'Separar Etiquetas por comas' ),
+		        'add_or_remove_items' => __( 'Añadir o eliminar Etiquetas' ),
+		        'choose_from_most_used' => __( 'Escoger entre las Etiquetas más utilizados' )
+		);
+ 
+register_taxonomy( 'etiqueta', 'paneles', array(
+        'hierarchical' => false,
+        'labels' => $labels, 
+        'show_ui' => true,
+        'query_var' => true,
+        'rewrite' => array( 'slug' => 'etiquetas' ),
+));
+}
+
+
+/*
+*
+*
+* Post types para circulares
+*
+*
+*/
+
+// la función no será utilizada antes del init
+add_action( 'init', 'circulares');
+
+function circulares() {
+    $labels = array(
+        'name'              => _x( 'Circulares', 'post type general name' ),
+        'singular_name'     => _x( 'Circular', 'post type singular name' ),
+        'add_new'           => _x( 'Añadir nueva', 'circular' ),
+        'add_new_item'      => __( 'Añadir nueva circular' ),
+        'edit_item'         => __( 'Editar circular' ),
+        'new_item'          => __( 'Nueva circular' ),
+        'view_item'         => __( 'Ver circular' ),
+        'search_item'       => __( 'Buscar circulares' ),
+        'not_found'         => __( 'No se han encontrado circulares' ),
+        'not_found_in_trash'=> __( 'No se ha encontrado circulares en la papelera' ),
+        'parent_item_colon' => ''                   
+    );
+
+// Creamos un array para los $args
+    $args = array( 
+        'labels'                => $labels,
+        'public'                => true,
+        'publicly_queryable'    => true,
+        'show_ui'               => true,
+        'query_var'             => true,
+        'rewrite'               => true,
+        'capability_type'       => 'post',
+        'hierarchical'          => false,
+        'menu_position'         => null,
+        'supports'              => array( 'title', 'editor', 'author', 'thumbnail', 'excerpt', 'comments' )
+    );  
+
+// registramos los post types
+    register_post_type( 'Circulares', $args );
+}
+
+
+// Lo enganchamos en la acción init y llamamos a la función create_circular_taxonomies() cuando arranque
+add_action( 'init', 'create_circular_taxonomies', 0 );
+ 
+// Creamos una taxonomía, cursos para el custom post type "Circulares"
+function create_circular_taxonomies() {
+        // Añadimos nueva taxonomía y la hacemos jerárquica (como las categorías por defecto)
+        $labels = array(
+        'name' => _x( 'Cursos', 'taxonomy general name' ),
+        'singular_name' => _x( 'Curso', 'taxonomy singular name' ),
+        'search_items' =>  __( 'Buscar por Curso' ),
+        'all_items' => __( 'Todos los Cursos' ),
+        'parent_item' => __( 'Curso padre' ),
+        'parent_item_colon' => __( 'Curso padre:' ),
+        'edit_item' => __( 'Editar Curso' ),
+        'update_item' => __( 'Actualizar Curso' ),
+        'add_new_item' => __( 'Añadir nuevo Curso' ),
+        'new_item_name' => __( 'Nombre del nuevo Curso' ),
+);
+register_taxonomy( 'curso', array( 'circulares' ), array(
+        'hierarchical' => true,
+        'labels' => $labels, /* Aquí es donde se utiliza la variable $labels que hemos creado arriba*/
+        'show_ui' => true,
+        'query_var' => true,
+        'rewrite' => array( 'slug' => 'cursos' ),
+));
+
+}
+
+
+/* 
+*
+*
+* Mostrar la columna en el administrador
+*
+*
+*/
+
+add_filter( 'manage_taxonomies_for_circulares_columns', 'circulares_type_columns' );
+function circulares_type_columns( $taxonomies ) {
+    $taxonomies[] = 'curso';
+    return $taxonomies;
+}
+
+
+/*
+*
+* Añadir desplegable con opciones Editor MCE
+*
+*
+*/
+
+function my_editor_buttons($buttons) {
+    array_unshift($buttons, 'styleselect');
+    return $buttons;
+}
+add_filter('mce_buttons_2', 'my_editor_buttons');
+
+
+// Opciones del desplegable
+add_filter( 'tiny_mce_before_init', 'tuts_mce_before_init' );
+ 
+function tuts_mce_before_init( $settings ) {
+ 
+    $style_formats = array(
+        array(
+            'title' => 'Estilo lista',
+            'selector' => 'ol',
+            'classes' => 'list-circle'
+            ),
+        array(
+            'title' => 'Boton Panel',
+            'selector' => 'a',
+            'classes' => 'botones-paneles',
+        ),
+        array(
+            'title' => 'Columna',
+            'block' => 'div',
+            'classes' => 'col-6',
+            'wrapper' => true
+        ),
+        array(
+            'title'     =>  'Indicador numérico',
+            'inline'    =>  'h2',
+            'block'     =>  'div',
+            'classes'   =>  'numeric-indicator'
+        )
+    );
+ 
+    $settings['style_formats'] = json_encode( $style_formats );
+ 
+    return $settings;
+}
+ 
+/*
+*
+*
+* Modificación de filtro para eliminar los párrafos automáticos
+*
+*
+*/ 
+// remover parrafos 
+// remove_filter( 'the_content', 'wpautop' );
+
+
+/*
+*
+* Función para insertar post dentro de la paginas
+*
+*/
+
+function aw_include_post($atts) {
+    $thepostid = intval($atts[id]);
+    $output = '';
+    query_posts("p=$thepostid");
+    if (have_posts()) : while (have_posts()) : the_post();
+        $output .= get_the_content($post->ID); 
+    endwhile; else:
+        // si falla no sale nada
+    endif;
+    wp_reset_query();
+    
+    return $output;
+}
+add_shortcode("incluir_entrada", "aw_include_post");
+
+
+/* 
+*
+*
+*Funcion imagen por defecto en post y paginas 
+*
+*
+*/
+
+function auto_post_thumbnail() {
+    global $post;
+    $already_has_thumb = has_post_thumbnail($post->ID);
+
+    if (!$already_has_thumb)  {
+        set_post_thumbnail($post->ID, '280');
+    }
+}
+
+add_action('the_post', 'auto_post_thumbnail');
+add_action('save_post', 'auto_post_thumbnail');
+add_action('draft_to_publish', 'auto_post_thumbnail');
+add_action('new_to_publish', 'auto_post_thumbnail');
+add_action('pending_to_publish', 'auto_post_thumbnail');
+add_action('future_to_publish', 'auto_post_thumbnail');
