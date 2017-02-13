@@ -1,0 +1,46 @@
+<?php get_header(); ?>
+
+	<div class="container">
+		
+		<?php if (have_posts()) : while (have_posts()) : the_post(); ?>
+
+		<div class="content-page">
+
+
+			<?php the_content(); ?>
+
+
+			<?php endwhile; ?>
+
+			<?php else : ?>
+				<h3>No encontrado</h3>
+			<?php endif; ?>	
+
+
+
+		</div>	
+	</div>
+
+	<!-- paneles inicio -->
+	<div class="paneles">
+		<div class="container">
+			<?php 
+
+				query_posts('posts_per_page=3&post_type=paneles');
+				while(have_posts()) : the_post(); ?>
+
+				<div class="col-4">
+
+					<a href="<?php the_permalink(); ?>">
+						<div class="post-panel">
+							<h3><?php the_title(); ?></h3>
+						</div>
+					</a>
+
+				</div>	
+
+			<?php endwhile; wp_reset_query(); ?>
+		</div>
+	</div>
+
+<?php get_footer(); ?>
