@@ -1,0 +1,67 @@
+<?php  
+
+/*
+Plantilla de paginas
+@since Liceo Ucatolica 1.0 
+*/
+
+?><?php get_header(); ?>
+
+	<div class="content-page">
+		<div class="container">
+			<?php if (have_posts()) : while (have_posts()) : the_post(); ?>
+
+			<div class="banner-image">
+				<?php if (has_post_thumbnail() ) { the_post_thumbnail('full'); } ?>		
+			</div>
+
+			<!-- Espacio amarillo con titulo y descripción-->
+			<div class="description">
+				<h1><?php the_title(); ?></h1>
+				<!-- mostrar la descripción de la pagina web -->
+				<?php $custom_fields = get_post_custom(); ?>
+				<p><?php if( isset( $custom_fields['luc_description_page'] ) ) { ?>
+         		<?php echo $custom_fields['luc_description_page'][0]; ?><?php } ?>
+         		</p>		
+			</div>
+			
+			<div class="content-pages">
+				<?php the_content(); ?>
+			</div>	
+
+			<?php endwhile; ?>
+
+			<?php else : ?>
+				<h3>No encontrado</h3>
+			<?php endif; ?>	
+
+		</div>	
+	</div>
+
+	<!-- paneles inicio -->
+	<div class="paneles">
+		<div class="container">
+			<?php 
+				$args = array(
+					'post_type'			=> 'paneles',
+					'posts_per_page'	=>	3
+				);
+
+				$loop_paneles = new WP_Query($args);
+				if(	$loop_paneles->have_posts() ):
+					while( $loop_paneles->have_posts() ): $loop_paneles->the_post(); ?> 
+						<div class="col-4">
+							<a href="<?php the_permalink(); ?>">
+								<div class="post-panel">
+									<h3><?php the_title(); ?></h3>
+								</div>
+							</a>
+						</div>
+					<?php endwhile; endif; ?>
+				<?php wp_reset_postdata(); 
+			?>	 		
+		</div>
+	</div>
+	<!-- Fin de paneles de inicio -->
+	
+<?php get_footer(); ?>
